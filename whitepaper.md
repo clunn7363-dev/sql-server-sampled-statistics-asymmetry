@@ -12,10 +12,10 @@ As table cardinality increases and effective sampling rates fall – a typical c
 
 This behaviour:
 
-•	Is undocumented
-•	Is independent of skew
-•	Affects organically grown, real world systems earlier than synthetic bulk loaded data
-•	Can eventually self mitigate at very high row counts due to undocumented fallback behaviour, but typically only after passing through a prolonged instability window
+ - Is undocumented
+ - Is independent of skew
+ - Affects organically grown, real world systems earlier than synthetic bulk loaded data
+ - Can eventually self mitigate at very high row counts due to undocumented fallback behaviour, but typically only after passing through a prolonged instability window
 
 This paper demonstrates the behaviour empirically (Appendices 1–3), explains the underlying mathematical cause, describes partial workarounds, and outlines low cost engine level opportunities to mitigate using signals SQL Server already computes.
 
