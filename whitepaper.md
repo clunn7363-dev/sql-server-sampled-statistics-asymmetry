@@ -25,10 +25,10 @@ ________________________________________
 2.1 Asymmetric treatment of point vs range estimates
 
 During sampled statistics generation:
-•	EQ_ROWS values are deterministically extrapolated from sampled frequencies by approximately rows / rows_sampled. Additional logic moderates low frequency extrapolation, but by observed counts of ~ 5 or more the multiplier can be consistently reverse engineered - by dividing EQ_ROWS by rows/rows_sampled, which often produces almost exact integers (eg, 4.99999)
-•	DISTINCT_RANGE_ROWS remains bounded by the number of distinct values observed in the sample, with seemingly no attempt to extrapolate.
-•	AVG_RANGE_ROWS, derived directly from DISTINCT_RANGE_ROWS, therefore inflates as sampling rates fall, even when true per value frequency is unchanged.
-•	Although EQ_ROWS may also inflate over time, it typically reflects the highest frequency values and therefore does not destabilize estimates at the same rate as AVG_RANGE_ROWS.
+ - EQ_ROWS values are deterministically extrapolated from sampled frequencies by approximately rows / rows_sampled. Additional logic moderates low frequency extrapolation, but by observed counts of ~ 5 or more the multiplier can be consistently reverse engineered - by dividing EQ_ROWS by rows/rows_sampled, which often produces almost exact integers (eg, 4.99999)
+ - DISTINCT_RANGE_ROWS remains bounded by the number of distinct values observed in the sample, with seemingly no attempt to extrapolate.
+ - AVG_RANGE_ROWS, derived directly from DISTINCT_RANGE_ROWS, therefore inflates as sampling rates fall, even when true per value frequency is unchanged.
+ - Although EQ_ROWS may also inflate over time, it typically reflects the highest frequency values and therefore does not destabilize estimates at the same rate as AVG_RANGE_ROWS.
 
 The consequence is asymmetric extrapolation: point frequencies are scaled, but the denominator governing average range frequencies is not. This causes range estimates to degrade far faster than point estimates under identical growth conditions.
 
@@ -39,10 +39,10 @@ In many production schemas - particularly parent child relationships - the true 
 
 In such systems:
 
-•	True average frequency remains constant
-•	Estimated average range frequency steadily increases
-•	Query plans appear stable for long periods
-•	Performance degrades abruptly when internal estimation thresholds are crossed
+ - True average frequency remains constant
+ - Estimated average range frequency steadily increases
+ - Query plans appear stable for long periods
+ - Performance degrades abruptly when internal estimation thresholds are crossed
 
 No workload change is required to trigger failure. Diagnosis is often time consuming, requires specialist expertise, and typical mitigations increase maintenance complexity rather than addressing root cause.
 
@@ -64,8 +64,8 @@ Appendix 1’s SQL generates five tables (but further row counts can be appended
 
 Construction method:
 
-•	Fixed per key frequency (~89)
-•	Data inserted in phases, specifically, 1/3 of data followed by 2/3 of data
+ - Fixed per key frequency (~89)
+• - Data inserted in phases, specifically, 1/3 of data followed by 2/3 of data
 
 This method was simply the first to reproduce the issue. I do not know if there is a way of generating data in a way which a mimics real world data. Real production systems tend to surface the issue earlier and more severely.
 
@@ -76,119 +76,183 @@ Appendix 2 captures statistics on FormID for each table.
 
 Despite identical true distribution:
 
-•	Actual average frequency remains ~89 across all tables
-•	Estimated averages diverge rapidly as table size increases
+ - Actual average frequency remains ~89 across all tables
+ - Estimated averages diverge rapidly as table size increases
 
-Table	Avg Range Rows	Actual Avg
-3m	~310	~89
-6m	~534	~89
-12m	~990	~89
-18m	~1399	~89
-30m	~2078	~89
+|Table|Avg Range Rows|Actual Avg|
+|--------|--------|--------|
+|3m|~310|~89|
+|6m|~534|~89|
+|12m|~990|~89|
+|18m|~1399|~89|
+|30m|~2078|~89|
+
 Two critical findings:
+
 1.	Statistics become progressively less representative as data grows, despite identical logical distribution.
 2.	At sufficiently large row counts, SQL Server appears to invoke an undocumented fallback mechanism that arrests further divergence.
+
 In practice, many systems fail long before this fallback is reached.
+
 The existence and behaviour of this fallback are undocumented; it is included here for completeness but not explored further.
+
 ________________________________________
 5. Deterministic scaling of EQ_ROWS (Appendix 4)
+
 Inspection of histograms shows:
-•	EQ_ROWS deltas stabilize to near constant increments
-•	These increments closely match rows / rows_sampled
-•	The multiplier is consistently recoverable
+
+ - EQ_ROWS deltas stabilize to near constant increments
+ - These increments closely match rows / rows_sampled
+ - The multiplier is consistently recoverable
+
 This demonstrates intentional, deterministic extrapolation, not sampling noise.
+
 No comparable behaviour exists for DISTINCT_RANGE_ROWS, despite both quantities representing partial observations of the same underlying distribution.
+
 ________________________________________
 6. Sampling rate sensitivity (Appendix 3)
-Appendix 3 regenerates statistics on a fixed 30 million row table using explicit sample rates.
-Sample	Avg AVG_RANGE_ROWS
-1%	~3200
-2%	~2100
-3%	~1377
-5%	~837
+
+Appendix 3 regenerates and analyzes statistics on the 30 million row table multiple times using explicit sample rates.
+
+|Sample|Avg AVG_RANGE_ROWS|
+|--------|--------|
+|1%|~3200|
+|2%|~2100|
+|3%|~1377|
+|5%|~837|
+
 Key implications:
-•	EQ_ROWS already scales with rows / rows_sampled
-•	DISTINCT_RANGE_ROWS scales approximately linearly with sample size
-•	For high cardinality data, linear scaling of distincts is strong evidence of systematic under representation
-•	The divergence between estimated and true average frequency accelerates as sampling rates fall
+
+ - EQ_ROWS already scales with rows / rows_sampled
+ - DISTINCT_RANGE_ROWS scales approximately linearly with sample size
+ - For high cardinality data, linear scaling of distincts is strong evidence of systematic under representation
+ - The divergence between estimated and true average frequency accelerates as sampling rates fall
+
 This establishes that under representation is not only present, but empirically detectable using SQL Server’s own sampling behaviour.
+
 ________________________________________
 7. Root cause summary
+
 The progressive nature of the problem is not caused by:
-•	Skew
-•	Ascending keys
-•	Stale statistics
-•	Query volatility
-•	Any commonly cited limitation of sampled statistics
+
+ - Skew
+ - Ascending keys
+ - Stale statistics
+ - Query volatility
+ - Any commonly cited limitation of sampled statistics
+
 It is caused by the combination of:
+
 1.	Physical sampling over discontiguous data
 2.	Deterministic extrapolation applied only to point frequencies
 3.	Sampled distinct counts being treated as complete observations
+
 ________________________________________
 8. Consequences for query optimisation
+
 Inflated AVG_RANGE_ROWS directly affects:
-•	Join algorithm selection
-•	Memory grants (frequently excessive)
-•	Parallelism decisions
-•	Error propagation across joins
+
+ - Join algorithm selection
+ - Memory grants (frequently excessive)
+ - Parallelism decisions
+ - Error propagation across joins
+
 Failures often appear erratic and non intuitive, leading to fragile mitigations and excessive reliance on fullscan statistics.
+
 ________________________________________
 9. Why Organically Grown Systems Are Hit Hardest
+
 Sampling observes rows in physical order, not logical key order.
+
 Over time:
-•	Inserts interleave unrelated keys and other table data
-•	Page splits destroy locality
-•	Run length inference collapses
+
+ - Inserts interleave unrelated keys and other table data
+ - Page splits destroy locality
+ - Run length inference collapses
+
 Logical data remains uniform; physical data does not.
+
 Synthetic bulk loaded data therefore often masks the issue, explaining inconsistent reproduction attempts. The successful reproduction in Appendix 1 is simply the first method found of working around SQL Server’s ability to infer frequency from physical layout, enabling replication. It is not a reproduction of real-world physical data layout.
+
 ________________________________________
 10. Opportunities for Improvement
+
 10.1 Conditional scaling of DISTINCT_RANGE_ROWS
+
 Applying the same multiplier used for EQ_ROWS directly to DISTINCT_RANGE_ROWS would correct the demonstrated failure case, but may degrade accuracy on other distributions.
-Uniform extrapolation is not required. The goal is symmetric extrapolation when under representation is empirically detectable—a condition SQL Server can already observe at negligible cost.
+
+Uniform extrapolation is not required. The goal is symmetric extrapolation when under representation is empirically detectable - a condition SQL Server can already observe at negligible cost.
+
 ________________________________________
 10.2 Multi sample consistency and coverage estimation
-Sampled distinct counts represent partial coverage of the true distinct domain. For high cardinality data, this coverage grows sub linearly with sample size.
+
+Sampled distinct counts represent partial coverage of the true distinct domain. For high cardinality data, this coverage grows sub-linearly with sample size.
+
 If SQL Server observes that:
-•	Doubling the sample size produces a near linear increase in observed distinct values, and
-•	This relationship persists across multiple sample fractions,
+
+ - Doubling the sample size produces a near linear increase in observed distinct values, and
+ - This relationship persists across multiple sample fractions,
+
 then the engine has direct evidence that sampled distincts materially under represent the true cardinality.
+
 With two samples, SQL Server can detect systematic under sampling and infer that coverage is incomplete. With three samples, the engine can estimate both the curvature and asymptote of the distinct discovery curve without assuming that any single sample is “accurate enough.”
+
 This allows estimation of:
-•	The fraction of the distinct domain already observed (coverage)
-•	A correction multiplier equal to 1 / coverage
-•	A coverage based scaled estimate of DISTINCT_RANGE_ROWS inferred from sampling behaviour, which also generalises and could refine the existing rows / rows_sampled extrapolation applied to EQ_ROWS
-Crucially, this converts the current exponential error growth of AVG_RANGE_ROWS under sampling into an approximately linear error that diminishes as sample size increases, bringing sampled statistics behaviour back in line with documented expectations of gradual accuracy improvement as sample size increases.
+
+ - The fraction of the distinct domain already observed (coverage)
+ - A correction multiplier equal to 1 / coverage
+ - A coverage based scaled estimate of DISTINCT_RANGE_ROWS inferred from sampling behaviour, which also generalises and could refine the existing rows / rows_sampled extrapolation applied to EQ_ROWS
+
+Crucially, this converts the current exponential error growth of AVG_RANGE_ROWS under sampling into an approximately linear error that diminishes as sample size increases, bringing sampled statistics behaviour back in line with documented expectations of the relationship between sample size and histogram accuracy.
+
 ________________________________________
 10.3 Internal consistency bounds
+
 Cases where:
+
 AVG_RANGE_ROWS > EQ_ROWS
-are mathematically implausible, since EQ_ROWS reflects the most frequent values. As a lightweight safeguard, AVG_RANGE_ROWS could be bounded relative to EQ_ROWS, with DISTINCT_RANGE_ROWS inferred accordingly.
+
+are mathematically implausible, since EQ_ROWS reflects the most frequent values. As a lightweight safeguard, AVG_RANGE_ROWS could be bounded to a reasonable percentage of EQ_ROWS, with DISTINCT_RANGE_ROWS inferred accordingly.
+
 ________________________________________
 10.4 Optional diagnostic aid (Appendix 5)
+
 The intent of this paper is to describe and explain a systematic estimator behaviour in SQL Server, not to provide a comprehensive mechanism for diagnosing or remediating individual production systems.
+
 Appendix 5 is therefore included as an informational aid only. It provides a script that compares distinct value discovery at 1% and 2% sampling rates across existing statistics in a database, without modifying or replacing those statistics. Material growth in observed distinct counts between 1% and 2% sample rates is a strong signal of incomplete distinct coverage, and therefore of elevated risk of AVG_RANGE_ROWS inflation under sampling and potential wider performance implications.
+
 The script is not intended to be exhaustive, deterministic, or prescriptive. Absence of findings should not be interpreted as absence of risk, and presence of findings does not imply an immediate correctness issue in query execution. Its purpose is solely to demonstrate that the behaviour described in this paper can be detected empirically in real databases using signals already produced by the SQL Server statistics engine.
+
 The script can be tuned via its opening configuration variables to reflect tolerances appropriate for specific environments or investigative use cases.
+
 Finally, it should be noted that while SQL Server routinely regenerates statistics automatically including during peak usage periods, this script performs additional sampled statistics operations and should therefore be executed with appropriate care in production environments, as its resource usage is non trivial.
+
 ________________________________________
 11. Operational Mitigations (Limited)
+
 In the absence of an engine level change, limited operational mitigations are available. These do not address the underlying inconsistency in the sampling model, but may reduce its impact in specific operational contexts.
-• FULLSCAN statistics
-Eliminates the issue by construction, as fullscan histograms accurately represent the distinct distribution of range values. This comes at the cost of increased statistics build time and maintenance overhead.
-• PERSIST_SAMPLE_PERCENT
-A potentially lower cost alternative to fullscan statistics, preserving a higher effective sampling rate across rebuilds. Its usefulness depends on a more precise understanding of the specific estimation degradation being addressed, making it a less generally applicable mitigation.
-A practical short term workaround is to create a custom fullscan statistics object on an affected column at a controlled point in time (for example, during a maintenance window), using OPTION (NORECOMPUTE) to reduce the likelihood of it being rebuilt by routine statistics maintenance. Where multiple statistics exist on a column, the optimizer will typically prefer the statistic with the most detailed histogram, making it likely — though not guaranteed — that the fullscan statistic will be used for cardinality estimation.
+
+ - FULLSCAN statistics. Eliminates the issue by construction, as fullscan histograms accurately represent the distinct distribution of range values. This comes at the cost of increased statistics build time and maintenance overhead.
+ - PERSIST_SAMPLE_PERCENT. A potentially lower cost alternative to fullscan statistics, preserving a higher effective sampling rate across rebuilds. Its usefulness depends on a more precise understanding of the specific estimation degradation being addressed, making it less generally applicable.
+
+A practical short term workaround is to create a custom fullscan statistics object on an affected column at a controlled point in time, using OPTION (NORECOMPUTE) to reduce the likelihood of it being rebuilt by routine statistics maintenance. The optimizer should prioritze usage of a fullscan statistic over a default, sampled statistic where multiple exist for the same column, making it likely — though not guaranteed — that the fullscan statistic will be used for cardinality estimation.
+
 This approach can temporarily restore accurate estimates without requiring repeated fullscan rebuilds during peak maintenance periods. Its effectiveness is inherently time bounded and dependent on workload characteristics, data change rates, and maintenance strategy. Over time, the statistic will become stale and estimation quality may again degrade, so this technique should be viewed as a probabilistic, interim mitigation, not a durable solution.
+
 ________________________________________
 12. Conclusion
+
 SQL Server’s sampled statistics encode an internally inconsistent model for high cardinality data under common growth patterns. Deterministic extrapolation is applied selectively, leaving range frequency estimates to diverge systematically as sampling rates fall.
+
 The issue is:
-•	Systematic
-•	Observable
-•	Undocumented
-•	Addressable using signals SQL Server already computes, allowing behaviour to more closely in line with documented expectations
+
+ - Systematic
+ - Observable
+ - Undocumented
+ - Addressable using signals SQL Server already computes, allowing behaviour to more closely in line with documented expectations
+ - 
 Until addressed at the engine level, this behaviour will continue to surface as unexplained instability in long lived production systems. 
+
 /*
 Appendix 1 – Generate replication tables and data
 NOTE – the opening list of numbers into @Targets can be altered/appended to test tables of differing sizes. I found that somewhere between 30 and 60 million rows statistics became accurate ‘enough’ again, with only ~15% deviation from the truth. Possibly proving that problematic histogram generation only applies within a certain range.
