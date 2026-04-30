@@ -35,12 +35,12 @@ ________________________________________
 Appendix 1 provides the first successful replication approach used to isolate this behaviour. 
 NOTE – replication is achieved by finding a way to work around SQL Server’s ability to infer frequency from logical and/or physical data layout, not by replicating real-world physical data layout. See Appendix 5 for SQL to identify examples in real systems.
 Appendix 1’s SQL generates five tables (but further row counts can be appended to the opening @Targets table and will automatically generate similarly-named tables and statistics):
-Table	Row Count
-FormAnswers_3m	3 million
-FormAnswers_6m	6 million
-FormAnswers_12m	12 million
-FormAnswers_18m	18 million
-FormAnswers_30m	30 million
+|Table|Row Count|
+|FormAnswers_3m|3 million|
+|FormAnswers_6m|6 million|
+|FormAnswers_12m|12 million|
+|FormAnswers_18m|18 million|
+|FormAnswers_30m|30 million|
 Construction method
 •	Fixed per key frequency (~89)
 •	Data inserted in phases, specifically, 1/3 of data followed by 2/3 of data
