@@ -254,6 +254,9 @@ The issue is:
 
 Until addressed at the engine level, this behaviour will continue to surface as unexplained instability in long lived production systems. 
 
+APPENDIX 1
+
+```sql
 /*
 Appendix 1 – Generate replication tables and data
 NOTE – the opening list of numbers into @Targets can be altered/appended to test tables of differing sizes. I found that somewhere between 30 and 60 million rows statistics became accurate ‘enough’ again, with only ~15% deviation from the truth. Possibly proving that problematic histogram generation only applies within a certain range.
