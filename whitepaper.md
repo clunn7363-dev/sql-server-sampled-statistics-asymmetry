@@ -254,7 +254,7 @@ The issue is:
 
 Until addressed at the engine level, this behaviour will continue to surface as unexplained instability in long lived production systems. 
 
-APPENDIX 1
+**Appendices**
 
 ```sql
 /*
