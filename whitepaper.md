@@ -1,40 +1,57 @@
 Asymmetric Extrapolation in SQL Server Sampled Statistics Generation
 How Unscaled DISTINCT_RANGE_ROWS Inflates AVG_RANGE_ROWS in Sampled Histograms and Destabilizes Range Cardinality Estimates, with suggested low- and ~zero-cost mitigations
 
+________________________________________
 1. Summary
+
 Microsoft SQL Server applies deterministic extrapolation to point frequency estimates (EQ_ROWS) during sampled statistics generation but applies no corresponding adjustment to range frequency estimates (DISTINCT_RANGE_ROWS, and by extension AVG_RANGE_ROWS).
+
 The extrapolation applied to EQ_ROWS only is easily reverse engineered, but mathematically is equally justifiable for both point and range frequencies. Sampled distinct counts are treated as complete observations even when sampling rates are low and cardinality is high.
+
 As table cardinality increases and effective sampling rates fall – a typical consequence of many long lived systems – sampled distinct counts increasingly under represent true cardinality. Because AVG_RANGE_ROWS is derived directly from these unscaled distinct counts, average range frequency estimates inflate steadily over time, despite true per value frequency remaining constant in many cases. This eventually triggers abrupt and unexpected execution plan degradation.
+
 This behaviour:
 •	Is undocumented
 •	Is independent of skew
 •	Affects organically grown, real world systems earlier than synthetic bulk loaded data
 •	Can eventually self mitigate at very high row counts due to undocumented fallback behaviour, but typically only after passing through a prolonged instability window
+
 This paper demonstrates the behaviour empirically (Appendices 1–3), explains the underlying mathematical cause, describes partial workarounds, and outlines low cost engine level opportunities to mitigate using signals SQL Server already computes.
+
 ________________________________________
 2. Core Observation
+
 2.1 Asymmetric treatment of point vs range estimates
+
 During sampled statistics generation:
 •	EQ_ROWS values are deterministically extrapolated from sampled frequencies by approximately rows / rows_sampled. Additional logic moderates low frequency extrapolation, but by observed counts of ~ 5 or more the multiplier can be consistently reverse engineered - by dividing EQ_ROWS by rows/rows_sampled, which often produces almost exact integers (eg, 4.99999)
 •	DISTINCT_RANGE_ROWS remains bounded by the number of distinct values observed in the sample, with seemingly no attempt to extrapolate.
 •	AVG_RANGE_ROWS, derived directly from DISTINCT_RANGE_ROWS, therefore inflates as sampling rates fall, even when true per value frequency is unchanged.
 •	Although EQ_ROWS may also inflate over time, it typically reflects the highest frequency values and therefore does not destabilize estimates at the same rate as AVG_RANGE_ROWS.
+
 The consequence is asymmetric extrapolation: point frequencies are scaled, but the denominator governing average range frequencies is not. This causes range estimates to degrade far faster than point estimates under identical growth conditions.
+
 ________________________________________
 3. Why This Matters in Real Systems
+
 In many production schemas - particularly parent child relationships - the true average frequency is bounded (for example, 8–15 child rows per parent, such as answers per form), while the number of distinct parent keys grows over time.
+
 In such systems:
 •	True average frequency remains constant
 •	Estimated average range frequency steadily increases
 •	Query plans appear stable for long periods
 •	Performance degrades abruptly when internal estimation thresholds are crossed
+
 No workload change is required to trigger failure. Diagnosis is often time consuming, requires specialist expertise, and typical mitigations increase maintenance complexity rather than addressing root cause.
+
 ________________________________________
 4. Reproducing the Behaviour
+
 4.1 Synthetic Dataset (Appendix 1)
 Appendix 1 provides the first successful replication approach used to isolate this behaviour. 
 NOTE – replication is achieved by finding a way to work around SQL Server’s ability to infer frequency from logical and/or physical data layout, not by replicating real-world physical data layout. See Appendix 5 for SQL to identify examples in real systems.
 Appendix 1’s SQL generates five tables (but further row counts can be appended to the opening @Targets table and will automatically generate similarly-named tables and statistics):
+
 |Table|Row Count|
 |--------|--------|
 |FormAnswers_3m|3 million|
@@ -42,10 +59,13 @@ Appendix 1’s SQL generates five tables (but further row counts can be appended
 |FormAnswers_12m|12 million|
 |FormAnswers_18m|18 million|
 |FormAnswers_30m|30 million|
+
 Construction method
 •	Fixed per key frequency (~89)
 •	Data inserted in phases, specifically, 1/3 of data followed by 2/3 of data
+
 This method was simply the first to reproduce the issue. I do not know if there is a way of generating data in a way which a mimics real world data. Real production systems tend to surface the issue earlier and more severely.
+
 ________________________________________
 4.2 Statistics results across table sizes (Appendix 2)
 Appendix 2 captures statistics on FormID for each table.
