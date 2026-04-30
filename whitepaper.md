@@ -549,7 +549,8 @@ ORDER BY
             'm]',
             ''
         )
-    ); 
+    );
+
 /*
 Appendix 3 – SQL to generate multiple statistics on the 30m table with different sample rates and show the results, showing that EQ_ROWS and AVG_RANGE_ROWS diverge as sample size increases, and providing the required data to infer an appropriate multiplier value for DISTINCT_RANGE_ROWS and potentially also to replace the existing multiplier for EQ_ROWS
 */
