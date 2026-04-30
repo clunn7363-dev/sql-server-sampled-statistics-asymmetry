@@ -250,7 +250,7 @@ The issue is:
  - Observable
  - Undocumented
  - Addressable using signals SQL Server already computes, allowing behaviour to more closely in line with documented expectations
- - 
+
 Until addressed at the engine level, this behaviour will continue to surface as unexplained instability in long lived production systems. 
 
 /*
