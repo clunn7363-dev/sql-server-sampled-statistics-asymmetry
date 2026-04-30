@@ -1,5 +1,7 @@
 **Full Technical Paper**
+
 Asymmetric Extrapolation in SQL Server Sampled Statistics
+
 https://github.com/clunn7363-dev/sql-server-sampled-statistics-asymmetry/blob/main/whitepaper.md
 
 # Asymmetric Extrapolation in SQL Server Sampled Statistics
