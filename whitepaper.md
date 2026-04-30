@@ -37,6 +37,7 @@ ________________________________________
 In many production schemas - particularly parent child relationships - the true average frequency is bounded (for example, 8–15 child rows per parent, such as answers per form), while the number of distinct parent keys grows over time.
 
 In such systems:
+
 •	True average frequency remains constant
 •	Estimated average range frequency steadily increases
 •	Query plans appear stable for long periods
@@ -60,7 +61,8 @@ Appendix 1’s SQL generates five tables (but further row counts can be appended
 |FormAnswers_18m|18 million|
 |FormAnswers_30m|30 million|
 
-Construction method
+Construction method:
+
 •	Fixed per key frequency (~89)
 •	Data inserted in phases, specifically, 1/3 of data followed by 2/3 of data
 
@@ -68,10 +70,14 @@ This method was simply the first to reproduce the issue. I do not know if there 
 
 ________________________________________
 4.2 Statistics results across table sizes (Appendix 2)
+
 Appendix 2 captures statistics on FormID for each table.
+
 Despite identical true distribution:
+
 •	Actual average frequency remains ~89 across all tables
 •	Estimated averages diverge rapidly as table size increases
+
 Table	Avg Range Rows	Actual Avg
 3m	~310	~89
 6m	~534	~89
