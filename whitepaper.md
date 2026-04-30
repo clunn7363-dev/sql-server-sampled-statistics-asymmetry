@@ -11,6 +11,7 @@ The extrapolation applied to EQ_ROWS only is easily reverse engineered, but math
 As table cardinality increases and effective sampling rates fall – a typical consequence of many long lived systems – sampled distinct counts increasingly under represent true cardinality. Because AVG_RANGE_ROWS is derived directly from these unscaled distinct counts, average range frequency estimates inflate steadily over time, despite true per value frequency remaining constant in many cases. This eventually triggers abrupt and unexpected execution plan degradation.
 
 This behaviour:
+
 •	Is undocumented
 •	Is independent of skew
 •	Affects organically grown, real world systems earlier than synthetic bulk loaded data
