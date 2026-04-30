@@ -1,4 +1,5 @@
-Asymmetric Extrapolation in SQL Server Sampled Statistics Generation
+**Asymmetric Extrapolation in SQL Server Sampled Statistics Generation**
+
 How Unscaled DISTINCT_RANGE_ROWS Inflates AVG_RANGE_ROWS in Sampled Histograms and Destabilizes Range Cardinality Estimates, with suggested low- and ~zero-cost mitigations
 
 ________________________________________
