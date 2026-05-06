@@ -2,6 +2,7 @@
 
 How Unscaled DISTINCT_RANGE_ROWS Inflates AVG_RANGE_ROWS in Sampled Histograms and Destabilizes Range Cardinality Estimates, with suggested low- and ~zero-cost mitigations
 
+Raised as an Azure Feedback item here - https://feedback.azure.com/d365community/idea/99b9a99d-8744-f111-9a90-7c1e52e4b3e2
 ________________________________________
 1. Summary
 
