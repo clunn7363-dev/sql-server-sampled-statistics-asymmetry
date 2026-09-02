@@ -69,7 +69,7 @@ Construction method:
  - Fixed per key frequency (~89)
 • - Data inserted in phases, specifically, 1/3 of data followed by 2/3 of data
 
-This method was simply the first to reproduce the issue. I do not know if there is a way of generating data in a way which a mimics real world data. Real production systems tend to surface the issue earlier and more severely.
+This method was simply the first to reproduce the issue. I do not know if there is a way of generating data in a way which mimics real world data. Real production systems tend to surface the issue earlier and more severely.
 
 ________________________________________
 4.2 Statistics results across table sizes (Appendix 2)
