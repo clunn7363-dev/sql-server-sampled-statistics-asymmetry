@@ -1,3 +1,5 @@
+```sql
+
 SET NOCOUNT ON;
 GO
 
